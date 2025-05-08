@@ -16,9 +16,8 @@ File_Tracking/
 ├── file_analysis_service/         # Сервис анализа файлов
 │ ├── app/
 │ │ ├── init.py                    
-│ │ ├── main.py                    # Точка входа
-│ │ ├── utils.py                   # ??
-│ │ ├── models.py                  
+│ │ ├── main.py                    # Точка входа                   
+│ │ ├── models.py                  # Описание таблиц бд 
 │ │ ├── routers.py                 # Эндпоинты
 │ │ └── database.py                # Взаимодействие с PostgreSQL
 │ ├── Dockerfile
@@ -28,14 +27,14 @@ File_Tracking/
 │ │ ├── storage/                   # Папка для хранения добавленных файлов
 │ │ ├── init.py                    
 │ │ ├── main.py                    # Точка входа
-│ │ ├── models.py                  
+│ │ ├── models.py                  # Описание таблиц бд 
 │ │ ├── routers.py                 # Эндпоинты
 │ │ └── database.py                # Взаимодействие с PostgreSQL
 │ ├── Dockerfile
 │ └── requirements.txt
 ├── postgres/                    
-│ └── init.sql               
-├── tests/                         # Юнит-тесты и интеграционные тесты
+│ └── init.sql                     # Скрипт для создания бд и user 
+├── tests/                         # Юнит-тесты 
 ├── docker-compose.yml             # Оркестрация контейнеров
 ├── README.md                      # Эта документация
 └── requirements.txt               # Общие зависимости
@@ -44,35 +43,28 @@ File_Tracking/
 ## Основные компоненты
 
 ### Микросервисы
-1. **API Gateway** (порт 8000):
-   - Маршрутизация запросов к другим сервисам
-   - Обработка ошибок (например, если сервис недоступен)
-   - Пример эндпоинта: `POST /api/upload`
+1. **API Gateway** _(порт 8000)_ обеспечивает маршрутизацию запросов к другим сервисам
 
 2. **File Analysis Service** (порт 8001):
    - Сравнение файлов на схожесть (по хешу)
    - Интеграция с WordCloudAPI для генерации облака слов (доп. функционал) ?? 
-   - Ведение метаданных в PostgreSQL
+   - Сохраняет контент данных в бд PostgreSQL
 
 3. **File Storing Service** (порт 8002):
    - Сохранение файлов в файловую систему
    - Выдача файлов по ID
-   - Ведение метаданных в PostgreSQL
+   - Сохраняет контент данных в бд PostgreSQL
 
 ### База данных
-- **PostgreSQL**: таблицы `files` (id, location, hash) и `statistics` (id, hash, content).
+- **PostgreSQL**: таблицы `files` (id, location, hash) и `analysers` (id, hash, content).
 
-## Запуск проекта
-
-### Требования
-- Docker 20.10+
-- Docker Compose 2.0+
+## Запуск проекта 
+(самое интересное)
 
 ### Инструкция
 1. Клонировать репозиторий:
    ```bash
-   git clone https://github.com/your-repo/text-scanner.git
-   cd text-scanner
+   git clone https://github.com/Vikkasss/File-analyzer/
    ```
    
 2. Переходим в папку проекта
@@ -87,31 +79,59 @@ File_Tracking/
     docker-compose up --build
 ```
 Во время запуска `docker-compose.yml` будет написано очень много строк), в которых будет запускаться 4 образа: `postgres`, `DockerFile` для каждого сервиса и api.
-В конце должно выйти такие строки: 
+В конце должно выйти это: 
 
-![img.png](for _the_report/img.png)
-![img_1.png](for _the_report/img_1.png)
+![img.png](img.png)
+
+![img_1.png](img_1.png)
 
 На фотографиях видно, что успешно мы запустили `postgres`, создав две бд (фото 2), а также успешно запустили два сервиса (`file-storing-1`, `file-analysis-1`) и маршрутизатор для них (`api-gateway-1`).
 
 Далее в этом терминале нам будут приходить логи от запросов `get`, `post`
 
-4. Переходим по [link](http://localhost:8000/docs#/) 
+4. Переходим по [link](http://localhost:8000/docs#/) и можем тестировать наши запросы через Swagger UI)) ура: 
 
-И можем тестировать наши запросы: 
+![img_2.png](img_2.png)
 
-![img_2.png](for _the_report/img_2.png)
+Мы с вами видим 5 запросов: 
+
+- `post /files - upload file` - загрузка файла, сохранение в папку `/storage` сервиса `file_storing_service` и в бд.
+- `get /files/{file_id}` - получение данных файла по его id
+- `get /files/{file_id}/content` - просмотр содержимого файла по его id
+- `post /analyse` - взятие текста файла из сервиса `file_storing_service` и сохранение в бд содержимого файла (отличие от предыдущего, что он в бд сохраняет и взаимодействует с другим сервисом)
+- `post /compare` - сравнение файлов по id через их hash
+
 
 Добавим три файла формата `.txt` (находятся в папке `for_the_report`), где два одинаковых и один нет.
 
+Успешное добавление файла выглядит так: 
 
-5. В отдельном терминале можно проверить сохранение загруженных файлов, наличие созданных бд: 
+![img_3.png](img_3.png)
 
-```bash
-    PS C:\Users\Acer> docker exec file_tracking-file-storing-1 ls /app/storage    #мой запрос на просмотр добавленных файлов
-    196ce1e5-7496-473b-beca-d475f0be4fc6.txt                                      #вывод
-    27c4c22a-ed49-4f6b-a088-f7f2af6a82e8.txt 
-    9c6e9857-dd81-457e-a1b0-e32aba4a3ae5.txt
-    fcdf3e9f-6cdf-46bf-abc6-3a743b4d251c.txt
+Проверить работу запроса `get` можно там же, а можно в поисковой строке, например введя такой [путь](http://localhost:8000/files/c289a039-ffd2-429d-8bf2-92bea4fdfcbe): 
+
+```bash 
+   http://localhost:8000/files/c289a039-ffd2-429d-8bf2-92bea4fdfcbe
 ```
+В данном случае `c289a039-ffd2-429d-8bf2-92bea4fdfcbe` - `file_id` и при добавлении файлов он у всех разный)
+
+Теперь проверим работу другого сервиса, протестировав запрос `post` для сравнения файлов
+
+![img_4.png](img_4.png) 
+Выполнив `get` запрос по id файла мы увидим, что файлы `1.txt` и `2.txt` действительно имеют одинаковый хеш
+
+А вот так выглядят логи в терминале, пока мы делали запросы:
+
+![img_6.png](img_6.png)
+
+Тут наглядно видно в какой момент использовался каждый сервис
+
+5. Проверим хранение файлов в папке `/storage`
+
+![img_5.png](img_5.png)
+
 Название файлов соотвествует их `file_id` из таблицы `files`
+
+
+
+

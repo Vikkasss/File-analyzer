@@ -91,7 +91,7 @@ File_Tracking/
 
 4. Переходим по [link](http://localhost:8000/docs#/) и можем тестировать наши запросы через Swagger UI)) ура: 
 
-![img_2.png](img_2.png)
+![img_7.png](img_7.png)
 
 Мы с вами видим 5 запросов: 
 

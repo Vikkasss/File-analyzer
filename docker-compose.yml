@@ -1,0 +1,51 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: storing_user
+      POSTGRES_PASSWORD: storing_pass  # Пароль для суперпользователя
+      POSTGRES_DB: files
+      POSTGRES_MULTIPLE_DATABASES: "files, analysis"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U storing_user -d files"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api-gateway:
+    build: ./api_gateway
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  file-storing:
+    build: ./file_storing_service
+    environment:
+      DATABASE_URL: postgresql://storing_user:storing_pass@postgres:5432/files
+    expose:
+      - "8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  file-analysis:
+    build: ./file_analysis_service
+    environment:
+      DATABASE_URL: postgresql://analysis_user:analysis_pass@postgres:5432/analysis
+    expose:
+      - "8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+
+
+volumes:
+  postgres_data:

@@ -5,4 +5,6 @@ class AnalysisResult(Base):
     __tablename__ = 'analysis'
     id = Column(UUID(as_uuid=True), primary_key=True, index=True)
     content = Column(String)
-    hash = Column(String(64))
+    word_count = Column(Integer)
+    char_count = Column(Integer)
+    paragraph_count = Column(Integer)

@@ -2,10 +2,11 @@ import hashlib
 import uuid
 import httpx
 from http.client import HTTPException
-from fastapi import APIRouter, UploadFile, File, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from .database import get_db
 from .models import AnalysisResult as AnalysisResultModel
+from .analyser import analyze_text
 
 router = APIRouter()
 
@@ -18,20 +19,26 @@ async def analyze_file(file_id: str, db: Session = Depends(get_db)):
                 raise HTTPException(404, "File not found")
 
             content = response.json()["content"]
-            file_hash = hashlib.sha256(content.encode()).hexdigest()
+            st = analyze_text(content)
+            if content is None:
+                raise HTTPException(status_code=500, detail="Content missing in response")
 
         result = AnalysisResultModel(
             id=str(uuid.uuid4()),
             content=content,
-            hash=file_hash,
+            word_count=st.word_count,
+            char_count=st.char_count,
+            paragraph_count=st.paragraph_count
         )
         db.add(result)
         db.commit()
         db.refresh(result)
 
-        return {"result_id": result.id,
+        return {"analysis_id": result.id,
                 "content": result.content,
-                "hash": result.hash
+                "word_count": result.word_count,
+                "char_count": result.char_count,
+                "paragraph_count": result.paragraph_count
         }
     except Exception as e:
         db.rollback()
@@ -39,6 +46,19 @@ async def analyze_file(file_id: str, db: Session = Depends(get_db)):
             status_code=500,
             detail=str(e)
         )
+
+@router.get("/analyze/{analysis_id}")
+async def analyze_file(analysis_id: str, db: Session = Depends(get_db)):
+    content = db.query(AnalysisResultModel).filter(AnalysisResultModel.id == analysis_id).first()
+    if not content:
+        raise HTTPException(404, "Content not found")
+    return {
+        "analysis_id": content.id,
+        "word_count": content.word_count,
+        "char_count": content.char_count,
+        "paragraph_count": content.paragraph_count
+    }
+
 
 @router.post("/compare")
 async def compare_files(file_id1: str, file_id2: str):

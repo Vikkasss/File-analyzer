@@ -78,7 +78,7 @@ File_Tracking/
 ```bash
     docker-compose up --build
 ```
-Во время запуска `docker-compose.yml` будет написано очень много строк), в которых будет запускаться 4 образа: `postgres`, `DockerFile` для каждого сервиса и api.
+Во время запуска `docker-compose.yml` будет написано очень много строк), в которых будет запускаться 4 образа: `postgres`, 3 `DockerFile` для остальных сервисов/api.
 В конце должно выйти это: 
 
 ![img.png](img.png)

@@ -1,8 +1,23 @@
 from http.client import responses
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, UploadFile, File, HTTPException
 import httpx
 
 router = APIRouter()
+
+
+async def call_service(url: str):
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            response = await client.get(url)
+            response.raise_for_status()
+            return response.json()
+
+    except httpx.ConnectError:
+        raise HTTPException(503, detail="Сервис временно недоступен")
+    except httpx.TimeoutException:
+        raise HTTPException(504, detail="Таймаут соединения")
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(e.response.status_code, detail=e.response.text)
 
 @router.post("/files")
 async def upload_file(file: UploadFile = File(...)):
